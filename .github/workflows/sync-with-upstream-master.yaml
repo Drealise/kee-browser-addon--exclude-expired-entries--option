@@ -1,4 +1,4 @@
-name: 'Sync kee-org/browser-addon/master to fork'
+name: 'Sync kee-org/browser-addon:master to fork:master'
 
 on:
   schedule:
