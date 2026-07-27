@@ -1,0 +1,63 @@
+name: 'Sync kee-org/browser-addon/master to fork'
+
+on:
+  schedule:
+    - cron:  '*/5 * * * *'
+  workflow_dispatch:  # click the button on Github repo!
+
+jobs:
+  sync_latest_from_upstream:
+    runs-on: ubuntu-latest
+    name: Sync latest commits from upstream repo
+
+    steps:
+    - name: Checkout target repo
+      uses: actions/checkout@v7
+      with:
+        ref: master
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Add upstream remote
+      run: |
+        git remote add upstream "https://github.com/kee-org/browser-addon.git"
+
+    - name: Fetch upstream master
+      run: git fetch upstream master
+
+    - name: Check for new commits
+      id: sync
+      run: |
+        UPSTREAM_COMMIT=$(git rev-parse upstream/master)
+        LOCAL_COMMIT=$(git rev-parse origin/master)
+        
+        if [ "$UPSTREAM_COMMIT" != "$LOCAL_COMMIT" ]; then
+          echo "has_new_commits=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_new_commits=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: '( ? ) -- New commits found'
+      if: steps.sync.outputs.has_new_commits == 'true'
+      run: echo "New commits were found to sync."
+    
+    - name: '( ? ) -- No new commits'
+      if: steps.sync.outputs.has_new_commits == 'false'
+      run: echo "There were no new commits."
+      
+    - name: Merge upstream changes
+      if: steps.sync.outputs.has_new_commits == 'true'
+      run: |
+        git merge upstream/master -m "Sync: Merge upstream changes"
+
+    - name: Push changes
+      if: steps.sync.outputs.has_new_commits == 'true'
+      run: git push origin master
+
+    - name: Show time
+      run: date
